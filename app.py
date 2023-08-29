@@ -37,20 +37,20 @@ dados = B[tags]
 dados_filter = copy.deepcopy(dados)
 dados_filter = dados_filter[dados_filter[tags[-1]]>825]
 
-OR = '5ª ordem'
+OR = '5'
 
 def get_model(OR):
 
-    if OR == '2ª ordem':
+    if OR == '2':
         NC = 6
         trans = lambda x1,x2: (1,x1,x2,x1*x1,x2*x2,x1*x2)
-    if OR == '3ª ordem':
+    if OR == '3':
         NC = 10
         trans = lambda x1,x2: (1,x1,x2, x1*x1, x2*x2, x1*x2, x1*x1*x1, x2*x2*x2, x1*x1*x2, x2*x2*x1)
-    if OR == '4ª ordem':
+    if OR == '4':
         NC = 15
         trans = lambda x1,x2: (1,x1,x2, x1*x1, x2*x2, x1*x2, x1*x1*x1, x2*x2*x2, x1*x1*x2, x2*x2*x1,x1*x1*x1*x1, x2*x2*x2*x2, x1*x1*x1*x2, x2*x2*x2*x1, x1*x1*x2*x2)
-    if OR == '5ª ordem':
+    if OR == '5':
         NC = 22
         trans = lambda x1,x2: (1,x1,x2, x1*x1, x2*x2, x1*x2, x1*x1*x1, x2*x2*x2, x1*x1*x2, x2*x2*x1,x1*x1*x1*x1, x2*x2*x2*x2, x1*x1*x1*x2, x2*x2*x2*x1, x1*x1*x2*x2,
               x1*x1*x1*x1*x1, x1*x1*x1*x1*x2,x1*x1*x1*x2*x2,x1*x2*x2*x2*x2,x1*x1*x2*x2*x2,x2*x2*x2*x2*x2,x1*x2*x2*x2*x2)
@@ -215,7 +215,7 @@ def figure3():
 ####################################################################################################################################################################################
 
 def cabecalho(app):
-    title = html.Div(
+    title = html.Div( id = 'oi-id',
         style = {"textAlign":"center"},
         children = [
             html.H1(
@@ -435,7 +435,13 @@ get_input = dbc.Card(className='card secundary mb-3',
                                                                id = 'var-value',
                                                                type = "number",
                                                                placeholder="Entre com o valor mímino"
-                                                           ))
+                                                           )),
+                                                        dbc.Col(
+                                                            html.Button( 'Calcular',
+                                                                id = 'botao-carregar',
+                                                                n_clicks = 0
+                                                                )
+                                                        )
 
                                                     ]
 
@@ -551,13 +557,17 @@ def parse_contents(contents, filename):
   
     if 'xlsx' in filename:
         df = pd.read_excel(BytesIO(decoded), engine='openpyxl')
-        return html.Div([
+
+        return df, html.Div([
             "Arquivo carregado com sucesso! :D."
         ])
+     
+    
     else:
-        return html.Div([
+        return pd.Datafeae(), html.Div([
             "Tipo de arquivo não suportado."
         ])
+
 
  
 
@@ -573,23 +583,77 @@ def parse_contents(contents, filename):
 )
 
 def toggle_modal(n1, n2, is_open, contents, filename):
+
     if n1 or n2:
         return not is_open, None
     return is_open, None
 
  
 
-@app.callback(
+@app.callback([
     Output("output-data-upload", "children"),
-    Input("upload-data", "contents"),
+    Output("x1-selector", "options"),
+    Output("x2-selector", "options"),
+    Output("x3-selector", "options")],
+    [Input("upload-data", "contents")],
     State("upload-data", "filename"),
+    prevent_initial_call=True
 )
 
 def update_output(contents, filename):
     if contents is not None:
-        children = parse_contents(contents, filename)
-        return children
+        df, children = parse_contents(contents, filename)
 
+        tags = list(df.columns)
+       
+        return children, tags, tags, tags
+    
+
+@app.callback([Output("var-rest","options")],
+              [Input("x1-selector","value"), Input("x2-selector","value"), Input("x3-selector","value")],
+              prevent_initial_call=True
+              )
+
+def update_constrains(x1,x2,x3):
+    if x1 != None and x2 != None and x3 != None:
+        options = ['Problema sem restrições']
+        options.append(x1)
+        options.append(x2)
+        options.append(x3)
+
+    else:
+        options = ['Selecione primeiro todas as variáveis da análise :P']
+
+    return [options]
+
+
+@app.callback([Output("oi-id","children")],
+              [Input("botao-carregar", "n_clicks"),
+              Input("upload-data", "contents"), Input("upload-data", "filename")], [State("x1-selector","value"), State("x2-selector","value"), State("x3-selector","value"),
+               State("order-selector","value"), State("var-rest","value"),State("var-value","value")],
+                prevent_initial_call=True
+              )
+
+
+def plots_modelo(n_clicks, contents, filename, x1,x2,x3,OR,REST_name,REST_value):
+    print(type(OR))
+    if contents is not None:
+        df, children = parse_contents(contents, filename)
+    tags = [x1,x2,x3]
+
+    if None in tags:
+        pass
+    else:
+        dados_filter = copy.deepcopy(df[tags])
+        dados_filter = dados_filter[dados_filter[REST_name]>REST_value]
+    
+
+
+
+   
+
+    return [html.H1("Hello bonitos")]
 
 if __name__ =='__main__':
     app.run_server()
+
